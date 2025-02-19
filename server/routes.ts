@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { openai, generateEmbedding } from "./openai";
+import { openai, generateEmbedding, analyzeDocument, improveQuery } from "./openai";
 import { insertDocumentSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -17,12 +17,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = insertDocumentSchema.parse(req.body);
-      const embedding = await generateEmbedding(data.content);
+
+      // Generate embedding and analyze document in parallel
+      const [embedding, metadata] = await Promise.all([
+        generateEmbedding(data.content),
+        analyzeDocument(data.content)
+      ]);
 
       const document = await storage.createDocument({
         ...data,
         embedding,
-        userId: req.user.id
+        userId: req.user.id,
+        metadata
       });
 
       res.status(201).json(document);
@@ -50,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat endpoint
+  // Chat endpoint with improved context retrieval
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated()) {
@@ -62,21 +68,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Message is required" });
       }
 
-      const messageEmbedding = await generateEmbedding(message);
+      // Improve the query and generate embedding in parallel
+      const [improvedQuery, messageEmbedding] = await Promise.all([
+        improveQuery(message),
+        generateEmbedding(message)
+      ]);
+
+      // Get relevant documents using the embedding
       const relevantDocs = await storage.searchSimilarDocuments(messageEmbedding, 3);
 
+      // Prepare context with both original content and metadata
       const context = relevantDocs
-        .map(doc => doc.content)
-        .join("\n\n");
+        .map(doc => `
+Document: ${doc.title}
+Category: ${doc.metadata?.category || 'uncategorized'}
+Content: ${doc.content}
+---`).join("\n\n");
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
         messages: [
           {
             role: "system",
-            content: `You are a cybersecurity expert assistant. Use this context to inform your responses:\n${context}`
+            content: `You are a cybersecurity expert assistant. Use the following context to inform your responses. If the context doesn't contain relevant information, you can provide general cybersecurity guidance.
+
+Context:
+${context}
+
+Format your response as JSON: {"answer": "your detailed response here"}`
           },
-          { role: "user", content: message }
+          { 
+            role: "user",
+            content: `Original question: ${message}\nImproved question: ${improvedQuery}`
+          }
         ],
         response_format: { type: "json_object" }
       });
@@ -84,7 +108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = JSON.parse(completion.choices[0].message.content);
       res.json({
         response: response.answer,
-        sources: relevantDocs.map(d => ({ title: d.title, id: d.id }))
+        sources: relevantDocs.map(d => ({ 
+          id: d.id,
+          title: d.title,
+          category: d.metadata?.category,
+          tags: d.metadata?.tags
+        }))
       });
     } catch (error) {
       console.error("Chat error:", error);
