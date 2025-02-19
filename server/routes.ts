@@ -16,11 +16,13 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
   try {
     const buffer = Buffer.from(content, 'base64');
 
-    // For markdown files, preserve formatting
+    // For markdown files, preserve formatting completely
     if (fileType === '.md') {
       return buffer.toString('utf-8')
-        .replace(/\0/g, '') // Remove null bytes
-        .replace(/\r\n/g, '\n') // Normalize line endings
+        .replace(/\0/g, '') // Only remove null bytes
+        .replace(/\r\n/g, '\n') // Normalize line endings to \n
+        .replace(/\r/g, '\n')   // Handle any remaining \r
+        .replace(/\t/g, '    ') // Convert tabs to spaces for consistent formatting
         .trim();
     }
 
