@@ -17,10 +17,13 @@ interface UploadFile {
   error?: string;
 }
 
+const ALLOWED_FILE_TYPES = ['.txt', '.md'];
+
 export function DocumentUpload() {
   const { toast } = useToast();
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadStats, setUploadStats] = useState({ total: 0, completed: 0, failed: 0 });
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
@@ -42,12 +45,41 @@ export function DocumentUpload() {
     setIsDragging(false);
   }, []);
 
+  const validateFile = (file: File): string | null => {
+    const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_FILE_TYPES.includes(extension)) {
+      return `Invalid file type. Allowed types: ${ALLOWED_FILE_TYPES.join(', ')}`;
+    }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      return 'File size exceeds 5MB limit';
+    }
+    return null;
+  };
+
   const processFile = async (file: File) => {
     try {
+      // Validate file first
+      const validationError = validateFile(file);
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setFiles(prev =>
+          prev.map(f =>
+            f.file === file && f.status === 'uploading'
+              ? { ...f, progress: Math.min(90, f.progress + 10) }
+              : f
+          )
+        );
+      }, 200);
+
       const content = await readFileAsText(file);
       const title = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
 
       await uploadMutation.mutateAsync({ title, content });
+      clearInterval(progressInterval);
 
       setFiles(prev =>
         prev.map(f =>
@@ -57,10 +89,18 @@ export function DocumentUpload() {
         )
       );
 
-      toast({
-        title: "Document uploaded",
-        description: `${file.name} has been processed and added to the knowledge base.`,
-      });
+      setUploadStats(prev => ({
+        ...prev,
+        completed: prev.completed + 1
+      }));
+
+      if (files.length > 1) {
+        // Only show individual success toasts for single uploads
+        toast({
+          title: "Document uploaded",
+          description: `${file.name} has been processed and added to the knowledge base.`,
+        });
+      }
     } catch (error) {
       setFiles(prev =>
         prev.map(f =>
@@ -70,11 +110,30 @@ export function DocumentUpload() {
         )
       );
 
-      toast({
-        title: "Upload failed",
-        description: `Failed to upload ${file.name}: ${error.message}`,
-        variant: "destructive",
-      });
+      setUploadStats(prev => ({
+        ...prev,
+        failed: prev.failed + 1
+      }));
+
+      // Only show individual error toasts for single uploads
+      if (files.length === 1) {
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${file.name}: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    // Check if all uploads are complete
+    if (uploadStats.completed + uploadStats.failed === uploadStats.total) {
+      if (uploadStats.total > 1) {
+        toast({
+          title: "Batch upload complete",
+          description: `Successfully uploaded ${uploadStats.completed} of ${uploadStats.total} documents. ${uploadStats.failed ? `Failed: ${uploadStats.failed}` : ''}`,
+          variant: uploadStats.failed ? "destructive" : "default",
+        });
+      }
     }
   };
 
@@ -82,13 +141,15 @@ export function DocumentUpload() {
     e.preventDefault();
     setIsDragging(false);
 
-    const newFiles = Array.from(e.dataTransfer.files).map(file => ({
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    const newFiles = droppedFiles.map(file => ({
       file,
       progress: 0,
       status: 'pending' as const,
     }));
 
     setFiles(prev => [...prev, ...newFiles]);
+    setUploadStats({ total: droppedFiles.length, completed: 0, failed: 0 });
 
     // Process each file
     newFiles.forEach(async ({ file }) => {
@@ -131,7 +192,7 @@ export function DocumentUpload() {
             Drag and drop your documents here
           </p>
           <p className="text-xs text-muted-foreground">
-            Supports plain text (.txt), markdown (.md)
+            Supports plain text (.txt), markdown (.md) up to 5MB
           </p>
         </div>
 
@@ -140,14 +201,25 @@ export function DocumentUpload() {
             {files.map(({ file, status, progress, error }) => (
               <div
                 key={file.name}
-                className="flex items-center gap-2 p-2 rounded border bg-card"
+                className={cn(
+                  "flex items-center gap-2 p-2 rounded border bg-card",
+                  status === 'success' && "border-green-500 bg-green-50/50",
+                  status === 'error' && "border-red-500 bg-red-50/50"
+                )}
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatBytes(file.size)}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(file.size)}
+                    </p>
+                    {status === 'uploading' && (
+                      <p className="text-xs text-muted-foreground">
+                        {progress}%
+                      </p>
+                    )}
+                  </div>
                   {status === 'uploading' && (
                     <Progress value={progress} className="h-1 mt-2" />
                   )}
