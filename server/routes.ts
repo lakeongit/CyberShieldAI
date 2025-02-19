@@ -5,6 +5,27 @@ import { storage } from "./storage";
 import { openai, generateEmbedding, analyzeDocument, improveQuery } from "./openai";
 import { insertDocumentSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import mammoth from 'mammoth';
+
+// Function to process different document types
+async function extractTextFromDocument(content: string, fileType: string): Promise<string> {
+  const buffer = Buffer.from(content, 'base64');
+
+  if (fileType === '.pdf') {
+    // Import pdf-parse dynamically to avoid initialization issues
+    const pdfParse = (await import('pdf-parse')).default;
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
+  }
+
+  if (fileType === '.doc' || fileType === '.docx') {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
+  }
+
+  // For text files, convert base64 back to text
+  return buffer.toString('utf-8');
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -16,16 +37,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Admin access required" });
       }
 
-      const data = insertDocumentSchema.parse(req.body);
+      const { title, content, fileType } = req.body;
+
+      // Extract text based on file type
+      const extractedText = await extractTextFromDocument(content, fileType);
 
       // Generate embedding and analyze document in parallel
       const [embedding, metadata] = await Promise.all([
-        generateEmbedding(data.content),
-        analyzeDocument(data.content)
+        generateEmbedding(extractedText),
+        analyzeDocument(extractedText)
       ]);
 
       const document = await storage.createDocument({
-        ...data,
+        title,
+        content: extractedText,
         embedding,
         userId: req.user.id,
         metadata

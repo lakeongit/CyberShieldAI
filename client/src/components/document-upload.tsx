@@ -28,9 +28,9 @@ export function DocumentUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useMutation({
-    mutationFn: async (data: { title: string; content: string }) => {
+    mutationFn: async (data: { title: string; content: string; fileType: string }) => {
       const res = await apiRequest("POST", "/api/documents", data);
-      return res.json();
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -77,10 +77,11 @@ export function DocumentUpload() {
         );
       }, 200);
 
+      const fileType = '.' + file.name.split('.').pop()?.toLowerCase();
       const content = await readFileAsText(file);
       const title = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
 
-      await uploadMutation.mutateAsync({ title, content });
+      await uploadMutation.mutateAsync({ title, content, fileType });
       clearInterval(progressInterval);
 
       setFiles(prev =>
