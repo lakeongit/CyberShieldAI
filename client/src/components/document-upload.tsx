@@ -28,8 +28,8 @@ interface UploadResponse {
   confidence: number;
 }
 
-const ALLOWED_FILE_TYPES = ['.txt', '.md', '.pdf', '.doc', '.docx'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = ['.txt', '.md', '.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for images
 
 export function DocumentUpload() {
   const { toast } = useToast();
@@ -52,8 +52,6 @@ export function DocumentUpload() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-
-      // Show detailed success message with metadata
       toast({
         title: "Document uploaded successfully",
         description: (
@@ -83,7 +81,7 @@ export function DocumentUpload() {
       return `Invalid file type. Allowed types: ${ALLOWED_FILE_TYPES.join(', ')}`;
     }
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size exceeds 5MB limit';
+      return 'File size exceeds 10MB limit';
     }
     return null;
   };
@@ -237,7 +235,7 @@ export function DocumentUpload() {
             Click here or drag and drop your documents
           </p>
           <p className="text-xs text-muted-foreground">
-            Supports txt, md, pdf, doc, docx up to 5MB
+            Supports txt, md, pdf, doc, docx, png, jpg, jpeg up to 10MB
           </p>
         </div>
 

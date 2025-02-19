@@ -6,14 +6,44 @@ import { openai, generateEmbedding, improveQuery } from "./openai";
 import { insertDocumentSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import mammoth from 'mammoth';
+import sharp from 'sharp';
 
 // Function to process different document types
 async function extractTextFromDocument(content: string, fileType: string): Promise<string> {
   const buffer = Buffer.from(content, 'base64');
 
+  // Handle image files
+  if (['.png', '.jpg', '.jpeg'].includes(fileType.toLowerCase())) {
+    try {
+      const image = sharp(buffer);
+      const metadata = await image.metadata();
+
+      // Basic image analysis
+      const analysis = {
+        format: metadata.format,
+        width: metadata.width,
+        height: metadata.height,
+        space: metadata.space,
+        channels: metadata.channels,
+        depth: metadata.depth,
+      };
+
+      // Return a structured description of the image
+      return JSON.stringify({
+        type: 'image',
+        format: metadata.format,
+        dimensions: `${metadata.width}x${metadata.height}`,
+        properties: analysis,
+        extracted_at: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Image processing error:', error);
+      throw new Error('Failed to process image file');
+    }
+  }
+
   if (fileType === '.pdf') {
     try {
-      // Import pdf-parse dynamically to avoid initialization issues
       const pdfParse = (await import('pdf-parse')).default;
       const pdfData = await pdfParse(buffer);
       return pdfData.text;
