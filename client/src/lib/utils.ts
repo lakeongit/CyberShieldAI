@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export async function readFileAsText(file: File): Promise<string> {
   const extension = '.' + file.name.split('.').pop()?.toLowerCase();
 
-  // For text files, use FileReader API
+  // For text files and markdown, use FileReader API directly
   if (extension === '.txt' || extension === '.md') {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();

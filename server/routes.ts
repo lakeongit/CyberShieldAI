@@ -12,19 +12,33 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
   const buffer = Buffer.from(content, 'base64');
 
   if (fileType === '.pdf') {
-    // Import pdf-parse dynamically to avoid initialization issues
-    const pdfParse = (await import('pdf-parse')).default;
-    const pdfData = await pdfParse(buffer);
-    return pdfData.text;
+    try {
+      // Import pdf-parse dynamically to avoid initialization issues
+      const pdfParse = (await import('pdf-parse')).default;
+      const pdfData = await pdfParse(buffer);
+      return pdfData.text;
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      throw new Error('Failed to process PDF file');
+    }
   }
 
   if (fileType === '.doc' || fileType === '.docx') {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
+    try {
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value;
+    } catch (error) {
+      console.error('DOC processing error:', error);
+      throw new Error('Failed to process DOC file');
+    }
   }
 
-  // For text files, convert base64 back to text
-  return buffer.toString('utf-8');
+  // For text and markdown files, convert base64 back to text
+  if (fileType === '.txt' || fileType === '.md') {
+    return buffer.toString('utf-8');
+  }
+
+  throw new Error(`Unsupported file type: ${fileType}`);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -58,11 +72,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(document);
     } catch (error) {
+      console.error("Document creation error:", error);
       if (error instanceof ZodError) {
         res.status(400).json({ error: "Invalid document data", details: error.errors });
       } else {
-        console.error("Document creation error:", error);
-        res.status(500).json({ error: "Failed to create document" });
+        res.status(500).json({ error: error.message || "Failed to create document" });
       }
     }
   });
