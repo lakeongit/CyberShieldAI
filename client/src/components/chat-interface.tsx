@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,7 +58,7 @@ export function ChatInterface() {
   }, [messages, scrollToBottom]);
 
   const filteredMessages = messages.filter(
-    msg => msg.content.toLowerCase().includes(searchTerm.toLowerCase())
+    msg => typeof msg.content === 'string' && msg.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const chatMutation = useMutation<ChatResponse, Error, string>({
