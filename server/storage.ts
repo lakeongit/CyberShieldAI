@@ -17,6 +17,8 @@ export interface IStorage {
   getDocuments(): Promise<Document[]>;
   getDocumentsByUserId(userId: number): Promise<Document[]>;
   searchSimilarDocuments(embedding: number[], limit?: number): Promise<Document[]>;
+  deleteDocument(id: number): Promise<void>;
+  updateDocumentTags(id: number, tags: string[]): Promise<Document>;
 
   sessionStore: session.Store;
 }
@@ -80,6 +82,34 @@ export class DatabaseStorage implements IStorage {
       .from(documents)
       .orderBy(sql`embedding <-> ${vectorStr}::vector`)
       .limit(limit);
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async updateDocumentTags(id: number, tags: string[]): Promise<Document> {
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id));
+
+    if (!document) {
+      throw new Error("Document not found");
+    }
+
+    const updatedMetadata = {
+      ...document.metadata,
+      tags: tags
+    };
+
+    const [updatedDoc] = await db
+      .update(documents)
+      .set({ metadata: updatedMetadata })
+      .where(eq(documents.id, id))
+      .returning();
+
+    return updatedDoc;
   }
 }
 

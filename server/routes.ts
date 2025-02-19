@@ -280,6 +280,67 @@ Format your response as JSON: {"answer": "your detailed response here"}`
     }
   });
 
+  app.delete("/api/documents/:id", async (req: Request, res: Response) => {
+    const run = await createTrace("delete_document");
+    try {
+      if (!req.isAuthenticated() || !req.user?.isAdmin) {
+        throw new Error("Admin access required");
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        throw new Error("Invalid document ID");
+      }
+
+      await storage.deleteDocument(id);
+      await updateTrace(run?.id, { id }, { success: true });
+      await addSystemFeedback(run?.id, true, "Document successfully deleted");
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Document deletion error:", error);
+      await updateTrace(run?.id, req.params, undefined, error);
+      await addSystemFeedback(run?.id, false, error instanceof Error ? error.message : "Unknown error");
+
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to delete document" 
+      });
+    }
+  });
+
+  app.patch("/api/documents/:id/tags", async (req: Request, res: Response) => {
+    const run = await createTrace("update_document_tags");
+    try {
+      if (!req.isAuthenticated() || !req.user?.isAdmin) {
+        throw new Error("Admin access required");
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        throw new Error("Invalid document ID");
+      }
+
+      const { tags } = req.body;
+      if (!Array.isArray(tags)) {
+        throw new Error("Tags must be an array");
+      }
+
+      const document = await storage.updateDocumentTags(id, tags);
+      await updateTrace(run?.id, { id, tags }, { document });
+      await addSystemFeedback(run?.id, true, "Document tags successfully updated");
+
+      res.json(document);
+    } catch (error) {
+      console.error("Tag update error:", error);
+      await updateTrace(run?.id, req.params, undefined, error);
+      await addSystemFeedback(run?.id, false, error instanceof Error ? error.message : "Unknown error");
+
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to update tags" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
