@@ -117,6 +117,55 @@ async function analyzeAndClassifyDocument(content: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  // Add new endpoint for getting all users
+  app.get("/api/users", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || !req.user?.isAdmin) {
+        throw new Error("Admin access required");
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to fetch users"
+      });
+    }
+  });
+
+  // Add new endpoint for updating user admin status
+  app.patch("/api/users/:id/admin", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated() || !req.user?.isAdmin) {
+        throw new Error("Admin access required");
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        throw new Error("Invalid user ID");
+      }
+
+      const { isAdmin } = req.body;
+      if (typeof isAdmin !== "boolean") {
+        throw new Error("isAdmin must be a boolean value");
+      }
+
+      // Prevent self-demotion
+      if (req.user.id === id && !isAdmin) {
+        throw new Error("Cannot remove admin privileges from yourself");
+      }
+
+      const user = await storage.updateUser(id, { isAdmin });
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user admin status:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to update user"
+      });
+    }
+  });
+
   app.post("/api/documents", async (req: Request, res: Response) => {
     const run = await createTrace("upload_document");
     try {
@@ -170,8 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         res.status(400).json({ error: "Invalid document data", details: error.errors });
       } else {
-        res.status(500).json({ 
-          error: error instanceof Error ? error.message : "Failed to create document" 
+        res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to create document"
         });
       }
     }
@@ -254,9 +303,9 @@ Format your response as JSON: {"answer": "your detailed response here"}`
 
       const response = JSON.parse(completion.choices[0].message.content);
       if (run?.id) {
-        await updateTrace(run.id, { message, improvedQuery }, { 
+        await updateTrace(run.id, { message, improvedQuery }, {
           response: response.answer,
-          relevantDocs: relevantDocs.length 
+          relevantDocs: relevantDocs.length
         });
         await addSystemFeedback(run.id, true, "Successfully generated response");
       }
@@ -302,8 +351,8 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       await updateTrace(run?.id, req.params, undefined, error);
       await addSystemFeedback(run?.id, false, error instanceof Error ? error.message : "Unknown error");
 
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : "Failed to delete document" 
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to delete document"
       });
     }
   });
@@ -335,8 +384,8 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       await updateTrace(run?.id, req.params, undefined, error);
       await addSystemFeedback(run?.id, false, error instanceof Error ? error.message : "Unknown error");
 
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : "Failed to update tags" 
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to update tags"
       });
     }
   });

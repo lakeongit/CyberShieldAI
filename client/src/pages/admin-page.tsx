@@ -1,13 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
 import { DocumentUpload } from "@/components/document-upload";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Document } from "@shared/schema";
+import { Document, User } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
-import { ArrowLeft, FileText, Tags, Trash2, Plus, X } from "lucide-react";
+import { ArrowLeft, FileText, Tags, Trash2, Plus, X, UserCircle, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -17,8 +17,35 @@ import { useState } from "react";
 export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+
   const { data: documents } = useQuery<Document[]>({ 
     queryKey: ["/api/documents"]
+  });
+
+  const { data: users } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: user?.isAdmin
+  });
+
+  const toggleAdminMutation = useMutation({
+    mutationFn: async ({ id, isAdmin }: { id: number; isAdmin: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/users/${id}/admin`, { isAdmin });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "User updated",
+        description: "Admin privileges have been updated successfully."
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update user",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const deleteDocumentMutation = useMutation({
@@ -103,6 +130,7 @@ export default function AdminPage() {
         <Tabs defaultValue="documents">
           <TabsList className="w-full mb-8">
             <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="upload">Upload</TabsTrigger>
           </TabsList>
 
@@ -115,6 +143,64 @@ export default function AdminPage() {
                   onDelete={() => deleteDocumentMutation.mutate(doc.id)}
                   onUpdateTags={(tags) => updateTagsMutation.mutate({ id: doc.id, tags })}
                 />
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <div className="grid gap-4">
+              {users?.map((u) => (
+                <Card key={u.id}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserCircle className="h-5 w-5" />
+                      {u.username}
+                      {u.isAdmin && (
+                        <Badge variant="default" className="ml-2">
+                          <Shield className="h-3 w-3 mr-1" />
+                          Admin
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardFooter>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant={u.isAdmin ? "destructive" : "default"}
+                          size="sm"
+                          disabled={u.id === user?.id} // Prevent self-modification
+                        >
+                          {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {u.isAdmin ? "Remove Admin Privileges" : "Grant Admin Privileges"}
+                          </DialogTitle>
+                          <DialogDescription>
+                            {u.isAdmin 
+                              ? "Are you sure you want to remove admin privileges from this user?"
+                              : "Are you sure you want to grant admin privileges to this user?"
+                            }
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant={u.isAdmin ? "destructive" : "default"}
+                            onClick={() => toggleAdminMutation.mutate({ 
+                              id: u.id, 
+                              isAdmin: !u.isAdmin 
+                            })}
+                          >
+                            Confirm
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </CardFooter>
+                </Card>
               ))}
             </div>
           </TabsContent>

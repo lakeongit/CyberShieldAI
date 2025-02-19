@@ -11,6 +11,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, update: Partial<User>): Promise<User>;
+  getAllUsers(): Promise<User[]>;
 
   // Document operations
   createDocument(doc: InsertDocument & { embedding: number[], userId: number }): Promise<Document>;
@@ -48,14 +50,26 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUser(id: number, update: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(update)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
   async createDocument(doc: InsertDocument & { embedding: number[]; userId: number }): Promise<Document> {
-    // Format the embedding array for pgvector
     const vectorStr = `[${doc.embedding.join(',')}]`;
 
     const [document] = await db.insert(documents)
       .values({
         title: doc.title,
-        content: doc.content.replace(/\0/g, '').trim(), // Remove null bytes
+        content: doc.content.replace(/\0/g, '').trim(),
         embedding: sql`${vectorStr}::vector`,
         userId: doc.userId,
         createdAt: new Date().toISOString(),
@@ -74,10 +88,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchSimilarDocuments(embedding: number[], limit = 5): Promise<Document[]> {
-    // Format the embedding array for pgvector
     const vectorStr = `[${embedding.join(',')}]`;
 
-    // Using cosine similarity with pgvector
     return db.select()
       .from(documents)
       .orderBy(sql`embedding <-> ${vectorStr}::vector`)
