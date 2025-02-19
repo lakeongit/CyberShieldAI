@@ -47,12 +47,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocument(doc: InsertDocument & { embedding: number[]; userId: number }): Promise<Document> {
+    // Format the embedding array for pgvector
+    const vectorStr = `[${doc.embedding.join(',')}]`;
+
     const [document] = await db.insert(documents)
       .values({
-        ...doc,
-        embedding: JSON.stringify(doc.embedding),
+        title: doc.title,
+        content: doc.content.replace(/\0/g, '').trim(), // Remove null bytes
+        embedding: sql`${vectorStr}::vector`,
+        userId: doc.userId,
         createdAt: new Date().toISOString(),
-        metadata: { tags: [], category: 'uncategorized', summary: '' }
+        metadata: doc.metadata || { tags: [], category: 'uncategorized', summary: '' }
       })
       .returning();
     return document;
@@ -67,13 +72,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchSimilarDocuments(embedding: number[], limit = 5): Promise<Document[]> {
-    // Convert the input embedding array to a pgvector compatible format
-    const embeddingStr = `[${embedding.join(',')}]`;
+    // Format the embedding array for pgvector
+    const vectorStr = `[${embedding.join(',')}]`;
 
     // Using cosine similarity with pgvector
     return db.select()
       .from(documents)
-      .orderBy(sql`embedding <-> ${embeddingStr}::vector`)
+      .orderBy(sql`embedding <-> ${vectorStr}::vector`)
       .limit(limit);
   }
 }

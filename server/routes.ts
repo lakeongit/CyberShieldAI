@@ -44,22 +44,26 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
     }
   }
 
-  // Handle other document types
+  // Handle PDF files
   if (fileType === '.pdf') {
     try {
+      // Import pdf-parse dynamically to avoid the test file issue
       const pdfParse = (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(buffer);
-      return pdfData.text;
+      const data = await pdfParse(buffer);
+      // Remove null bytes and normalize whitespace
+      return data.text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
     } catch (error) {
       console.error('PDF processing error:', error);
       throw new Error('Failed to process PDF file');
     }
   }
 
+  // Handle Word documents
   if (fileType === '.doc' || fileType === '.docx') {
     try {
       const result = await mammoth.extractRawText({ buffer });
-      return result.value;
+      // Remove null bytes and normalize whitespace
+      return result.value.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
     } catch (error) {
       console.error('DOC processing error:', error);
       throw new Error('Failed to process DOC file');
