@@ -26,10 +26,10 @@ export default function AuthPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-6 h-6" />
-              Cybersecurity Expert
+              ENO Secure
             </CardTitle>
             <CardDescription>
-              Access the cybersecurity knowledge base
+              Sign in to access the cybersecurity knowledge base
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -54,9 +54,12 @@ export default function AuthPage() {
       <div className="hidden lg:flex flex-1 bg-slate-900 items-center justify-center p-8">
         <div className="max-w-md text-white">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            ENO Secure Knowledge Assistant
+            ENO Secure
           </h1>
-          <p className="text-slate-300 text-lg">
+          <p className="text-slate-300 text-lg mb-4">
+            Your AI-powered cybersecurity expert assistant
+          </p>
+          <p className="text-slate-300">
             Access our extensive knowledge base of cybersecurity best practices, frameworks, and expert insights powered by advanced AI.
           </p>
         </div>
