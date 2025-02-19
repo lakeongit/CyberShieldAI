@@ -245,77 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        throw new Error("Authentication required");
-      }
-
-      const conversation = await storage.createConversation({
-        title: req.body.title || "New Chat",
-        userId: req.user!.id
-      });
-
-      res.status(201).json(conversation);
-    } catch (error) {
-      console.error("Error creating conversation:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create conversation"
-      });
-    }
-  });
-
-  app.get("/api/conversations", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        throw new Error("Authentication required");
-      }
-
-      const { search } = req.query;
-      let conversations;
-
-      if (typeof search === "string" && search.trim()) {
-        conversations = await storage.searchConversations(req.user!.id, search.trim());
-      } else {
-        conversations = await storage.getConversationsByUserId(req.user!.id);
-      }
-
-      res.json(conversations);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to fetch conversations"
-      });
-    }
-  });
-
-  app.get("/api/conversations/:id/messages", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        throw new Error("Authentication required");
-      }
-
-      const conversationId = parseInt(req.params.id);
-      if (isNaN(conversationId)) {
-        throw new Error("Invalid conversation ID");
-      }
-
-      // Verify the conversation belongs to the user
-      const conversation = await storage.getConversation(conversationId);
-      if (!conversation || conversation.userId !== req.user!.id) {
-        throw new Error("Conversation not found");
-      }
-
-      const messages = await storage.getMessagesByConversationId(conversationId);
-      res.json(messages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to fetch messages"
-      });
-    }
-  });
-
+  // Chat endpoint with improved context retrieval
   app.post("/api/chat", async (req: Request, res: Response) => {
     let run;
     try {
@@ -329,35 +259,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("Authentication required");
       }
 
-      const { message, conversationId } = req.body;
+      const { message } = req.body;
       if (!message || typeof message !== "string") {
         throw new Error("Message is required");
       }
 
-      if (!conversationId) {
-        throw new Error("Conversation ID is required");
-      }
-
-      // Verify the conversation belongs to the user
-      const conversation = await storage.getConversation(conversationId);
-      if (!conversation || conversation.userId !== req.user!.id) {
-        throw new Error("Conversation not found");
-      }
-
-      // Store user message
-      await storage.createMessage({
-        content: message,
-        role: "user",
-        conversationId
-      });
-
-      // Generate response with context
+      // Improve the query and generate embedding in parallel
       const [improvedQuery, messageEmbedding] = await Promise.all([
         improveQuery(message),
         generateEmbedding(message)
       ]);
 
+      // Get relevant documents using the embedding
       const relevantDocs = await storage.searchSimilarDocuments(messageEmbedding, 3);
+
+      // Prepare context with both original content and metadata
       const context = relevantDocs
         .map(doc => `
 Document: ${doc.title}
@@ -385,21 +301,7 @@ Format your response as JSON: {"answer": "your detailed response here"}`
         response_format: { type: "json_object" }
       });
 
-      const response = JSON.parse(completion.choices[0].message.content!);
-
-      // Store assistant message
-      const assistantMessage = await storage.createMessage({
-        content: response.answer,
-        role: "assistant",
-        conversationId,
-        sources: relevantDocs.map(d => ({
-          id: d.id,
-          title: d.title,
-          category: d.metadata?.category,
-          tags: d.metadata?.tags
-        }))
-      });
-
+      const response = JSON.parse(completion.choices[0].message.content);
       if (run?.id) {
         await updateTrace(run.id, { message, improvedQuery }, {
           response: response.answer,
@@ -409,7 +311,7 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       }
 
       res.json({
-        message: assistantMessage,
+        response: response.answer,
         sources: relevantDocs.map(d => ({
           id: d.id,
           title: d.title,
@@ -421,25 +323,9 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       console.error("Chat error:", error);
       if (run?.id) {
         await updateTrace(run.id, req.body, undefined, error);
-        await addSystemFeedback(run.id, false, error instanceof Error ? error.message : "Unknown error");
+        await addSystemFeedback(run.id, false, error.message);
       }
-
-      // Store error message if conversation exists
-      if (req.body.conversationId) {
-        try {
-          await storage.createMessage({
-            content: error instanceof Error ? error.message : "An error occurred",
-            role: "error",
-            conversationId: req.body.conversationId
-          });
-        } catch (e) {
-          console.error("Failed to store error message:", e);
-        }
-      }
-
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to process chat message"
-      });
+      res.status(500).json({ error: "Failed to process chat message" });
     }
   });
 
