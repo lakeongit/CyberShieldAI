@@ -195,6 +195,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add password change endpoint
+  app.patch("/api/users/:id/password", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        throw new Error("Authentication required");
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        throw new Error("Invalid user ID");
+      }
+
+      // Only allow users to change their own password, unless they're admin
+      if (id !== req.user!.id && !req.user?.isAdmin) {
+        throw new Error("Not authorized to change other users' passwords");
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        throw new Error("Current and new passwords are required");
+      }
+
+      const user = await storage.getUserByUsername(req.user!.username);
+      if (!user || !(await comparePasswords(currentPassword, user.password))) {
+        throw new Error("Current password is incorrect");
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      const updatedUser = await storage.updateUser(id, { password: hashedPassword });
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to update password"
+      });
+    }
+  });
+
   app.post("/api/documents", async (req: Request, res: Response) => {
     const run = await createTrace("upload_document");
     try {
