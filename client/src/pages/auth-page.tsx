@@ -155,6 +155,12 @@ function RegisterForm({ onSubmit }: { onSubmit: (data: any) => void }) {
         <Button type="submit" className="w-full">
           Register
         </Button>
+        <p className="text-sm text-muted-foreground text-center mt-4">
+          By registering, you agree to our{" "}
+          <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+        </p>
       </form>
     </Form>
   );
