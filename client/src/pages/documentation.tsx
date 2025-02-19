@@ -36,10 +36,20 @@ export function Documentation() {
           </Card>
         </section>
 
-        {/* Core Features Grid */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Core Features</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+        {/* How It Works Section */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold mb-6">How It Works</h2>
+        <Card className="p-6">
+          <p className="text-muted-foreground leading-relaxed">
+            The system combines advanced language models with a specialized knowledge base to provide expert-level cybersecurity guidance. Through natural language processing, it understands user queries and provides relevant, contextual responses backed by trusted sources.
+          </p>
+        </Card>
+      </section>
+
+      {/* Core Features Grid */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold mb-6">Core Features</h2>
+        <div className="grid md:grid-cols-3 gap-6">
             <Card className="p-6 hover:shadow-lg transition-shadow">
               <div className="p-3 w-12 h-12 rounded-full bg-primary/10 mb-4">
                 <MessageSquare className="h-6 w-6 text-primary" />
