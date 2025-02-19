@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { insertDocumentSchema } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AlertCircle, FileText, Loader2, Upload, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { readFileAsText, formatBytes } from "@/lib/utils";
@@ -17,13 +17,15 @@ interface UploadFile {
   error?: string;
 }
 
-const ALLOWED_FILE_TYPES = ['.txt', '.md'];
+const ALLOWED_FILE_TYPES = ['.txt', '.md', '.pdf', '.doc', '.docx'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export function DocumentUpload() {
   const { toast } = useToast();
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadStats, setUploadStats] = useState({ total: 0, completed: 0, failed: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
@@ -50,7 +52,7 @@ export function DocumentUpload() {
     if (!ALLOWED_FILE_TYPES.includes(extension)) {
       return `Invalid file type. Allowed types: ${ALLOWED_FILE_TYPES.join(', ')}`;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > MAX_FILE_SIZE) {
       return 'File size exceeds 5MB limit';
     }
     return null;
@@ -94,14 +96,13 @@ export function DocumentUpload() {
         completed: prev.completed + 1
       }));
 
-      if (files.length > 1) {
-        // Only show individual success toasts for single uploads
+      if (files.length === 1) {
         toast({
           title: "Document uploaded",
           description: `${file.name} has been processed and added to the knowledge base.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       setFiles(prev =>
         prev.map(f =>
           f.file === file
@@ -137,11 +138,10 @@ export function DocumentUpload() {
     }
   };
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleFileSelect = (selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const droppedFiles = Array.from(selectedFiles);
     const newFiles = droppedFiles.map(file => ({
       file,
       progress: 0,
@@ -163,7 +163,17 @@ export function DocumentUpload() {
 
       await processFile(file);
     });
+  };
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
   }, []);
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const removeFile = (file: File) => {
     setFiles(prev => prev.filter(f => f.file !== file));
@@ -179,20 +189,29 @@ export function DocumentUpload() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div
+          onClick={handleClick}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={cn(
-            "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-            isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+            "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+            isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:bg-muted/50"
           )}
         >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => handleFileSelect(e.target.files)}
+            className="hidden"
+            multiple
+            accept={ALLOWED_FILE_TYPES.join(',')}
+          />
           <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
           <p className="text-sm text-muted-foreground mb-1">
-            Drag and drop your documents here
+            Click here or drag and drop your documents
           </p>
           <p className="text-xs text-muted-foreground">
-            Supports plain text (.txt), markdown (.md) up to 5MB
+            Supports txt, md, pdf, doc, docx up to 5MB
           </p>
         </div>
 
