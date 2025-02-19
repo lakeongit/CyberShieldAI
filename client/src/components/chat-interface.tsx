@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReactMarkdown from 'react-markdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
 interface ChatMessage {
   role: "user" | "assistant" | "error";
@@ -18,6 +20,10 @@ interface ChatMessage {
   sources?: Array<{ id: number; title: string; category?: string; tags?: string[] }>;
   retryFn?: () => void;
   expanded?: boolean;
+  metadata?: {
+    type?: "warning" | "info" | "tip";
+    title?: string;
+  };
 }
 
 interface ChatResponse {
@@ -208,8 +214,23 @@ export function ChatInterface() {
                             </Button>
                           </CollapsibleTrigger>
                         </div>
-                        <div className="pr-20">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <div className={cn(
+                          "pr-20",
+                          message.metadata?.type === "warning" && "border-l-4 border-yellow-500 pl-4",
+                          message.metadata?.type === "info" && "border-l-4 border-blue-500 pl-4",
+                          message.metadata?.type === "tip" && "border-l-4 border-green-500 pl-4"
+                        )}>
+                          {message.metadata?.title && (
+                            <div className="mb-2 font-semibold">
+                              {message.metadata.title}
+                            </div>
+                          )}
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                          {message.sources && message.sources.length > 0 && (
+                            <Separator className="my-4" />
+                          )}
                         </div>
                       </div>
                     ) : (
