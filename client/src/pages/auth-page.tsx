@@ -38,11 +38,11 @@ export default function AuthPage() {
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <LoginForm onSubmit={(data) => loginMutation.mutate(data)} />
               </TabsContent>
-              
+
               <TabsContent value="register">
                 <RegisterForm onSubmit={(data) => registerMutation.mutate(data)} />
               </TabsContent>
@@ -50,11 +50,11 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="hidden lg:flex flex-1 bg-slate-900 items-center justify-center p-8">
         <div className="max-w-md text-white">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Cybersecurity Knowledge Assistant
+            ENO Secure Knowledge Assistant
           </h1>
           <p className="text-slate-300 text-lg">
             Access our extensive knowledge base of cybersecurity best practices, frameworks, and expert insights powered by advanced AI.
@@ -65,7 +65,7 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm({ onSubmit }) {
+function LoginForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -89,7 +89,7 @@ function LoginForm({ onSubmit }) {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="password"
@@ -102,7 +102,7 @@ function LoginForm({ onSubmit }) {
             </FormItem>
           )}
         />
-        
+
         <Button type="submit" className="w-full">
           Login
         </Button>
@@ -111,7 +111,7 @@ function LoginForm({ onSubmit }) {
   );
 }
 
-function RegisterForm({ onSubmit }) {
+function RegisterForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -135,7 +135,7 @@ function RegisterForm({ onSubmit }) {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="password"
@@ -148,7 +148,7 @@ function RegisterForm({ onSubmit }) {
             </FormItem>
           )}
         />
-        
+
         <Button type="submit" className="w-full">
           Register
         </Button>
