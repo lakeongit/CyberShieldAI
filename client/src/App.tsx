@@ -9,9 +9,6 @@ import AuthPage from "@/pages/auth-page";
 import AdminPage from "@/pages/admin-page";
 import DocsPage from "@/pages/docs-page";
 import { ProtectedRoute } from "./lib/protected-route";
-import Terms from "@/pages/terms"; // Added import
-import Privacy from "@/pages/privacy"; // Added import
-
 
 function Router() {
   return (
@@ -19,9 +16,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/docs" component={DocsPage} />
       <ProtectedRoute path="/admin" component={AdminPage} />
-      <Route path="/" component={HomePage} />
-      <Route path="/terms" component={Terms} />
-      <Route path="/privacy" component={Privacy} />
+      <ProtectedRoute path="/" component={HomePage} />
       <Route component={NotFound} />
     </Switch>
   );
