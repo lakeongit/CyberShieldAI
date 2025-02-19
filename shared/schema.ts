@@ -15,8 +15,8 @@ export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  // Using pgvector's vector type for embeddings
-  embedding: text("embedding").notNull(),
+  // Store embedding as a JSON string array that we'll convert to vector in queries
+  embedding: jsonb("embedding").$type<number[]>().notNull(),
   metadata: jsonb("metadata").$type<{
     tags: string[];
     category: string;
