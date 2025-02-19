@@ -112,9 +112,94 @@ export default function AdminPage() {
     );
   }
 
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", `/api/users/${user!.id}/password`, {
+        currentPassword,
+        newPassword,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully.",
+      });
+      setIsPasswordDialogOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update password",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(true)}>
+                Change Password
+              </Button>
+              <Link href="/">
+                <Button variant="outline">
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to Chat
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+              <DialogDescription>
+                Enter your current password and a new password.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => changePasswordMutation.mutate()}
+                disabled={changePasswordMutation.isPending}
+              >
+                {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </header>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
