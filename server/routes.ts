@@ -12,13 +12,16 @@ import sharp from 'sharp';
 async function extractTextFromDocument(content: string, fileType: string): Promise<string> {
   const buffer = Buffer.from(content, 'base64');
 
+  // For text and markdown files, convert base64 back to text
+  if (fileType === '.txt' || fileType === '.md') {
+    return buffer.toString('utf-8');
+  }
+
   // Handle image files
   if (['.png', '.jpg', '.jpeg'].includes(fileType.toLowerCase())) {
     try {
       const image = sharp(buffer);
       const metadata = await image.metadata();
-
-      // Basic image analysis
       const analysis = {
         format: metadata.format,
         width: metadata.width,
@@ -27,8 +30,6 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
         channels: metadata.channels,
         depth: metadata.depth,
       };
-
-      // Return a structured description of the image
       return JSON.stringify({
         type: 'image',
         format: metadata.format,
@@ -42,6 +43,7 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
     }
   }
 
+  // Handle other document types
   if (fileType === '.pdf') {
     try {
       const pdfParse = (await import('pdf-parse')).default;
@@ -63,11 +65,6 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
     }
   }
 
-  // For text and markdown files, convert base64 back to text
-  if (fileType === '.txt' || fileType === '.md') {
-    return buffer.toString('utf-8');
-  }
-
   throw new Error(`Unsupported file type: ${fileType}`);
 }
 
@@ -77,9 +74,9 @@ async function analyzeAndClassifyDocument(content: string) {
     messages: [
       {
         role: "system",
-        content: `Analyze the following cybersecurity document and extract key metadata. Format your response as JSON with the following structure:
+        content: `Analyze the following document and extract key metadata, even if it appears to be a technical log or error message. Format your response as JSON with the following structure:
 {
-  "category": "one of: network_security, application_security, cloud_security, incident_response, compliance, threat_intelligence, or general",
+  "category": "one of: network_security, application_security, cloud_security, incident_response, compliance, threat_intelligence, general, or logs_and_errors",
   "tags": ["array of relevant tags"],
   "summary": "a brief 2-3 sentence summary of the document",
   "confidence": 0.0 to 1.0
@@ -99,7 +96,6 @@ async function analyzeAndClassifyDocument(content: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  // Document management endpoints
   app.post("/api/documents", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated() || !req.user?.isAdmin) {
@@ -117,14 +113,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         analyzeAndClassifyDocument(extractedText)
       ]);
 
-      // Validate confidence threshold
-      if (metadata.confidence < 0.7) {
+      // Lower confidence threshold for logs and error documents
+      const confidenceThreshold = metadata.category === 'logs_and_errors' ? 0.5 : 0.7;
+
+      if (metadata.confidence < confidenceThreshold) {
         return res.status(400).json({
           error: "Document classification confidence too low",
           details: metadata
         });
       }
 
+      // Store the embedding array directly without stringifying
       const document = await storage.createDocument({
         title,
         content: extractedText,
