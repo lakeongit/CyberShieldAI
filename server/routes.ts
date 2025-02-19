@@ -93,13 +93,13 @@ async function analyzeAndClassifyDocument(content: string) {
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(completion.choices[0].message.content);
-    await updateTrace(run.id, { content }, { result });
-    await addSystemFeedback(run.id, true, "Successfully analyzed document");
+    const result = JSON.parse(completion.choices[0].message.content || "{}");
+    await updateTrace(run?.id, { content }, { result });
+    await addSystemFeedback(run?.id, true, "Successfully analyzed document");
     return result;
   } catch (error: any) {
-    await updateTrace(run.id, { content }, undefined, error);
-    await addSystemFeedback(run.id, false, error.message);
+    await updateTrace(run?.id, { content }, undefined, error);
+    await addSystemFeedback(run?.id, false, error.message);
     throw error;
   }
 }
@@ -115,35 +115,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { title, content, fileType } = req.body;
-
-      // Extract text based on file type
       const extractedText = await extractTextFromDocument(content, fileType);
-
-      // Generate embedding and analyze document in parallel
       const [embedding, metadata] = await Promise.all([
         generateEmbedding(extractedText),
         analyzeAndClassifyDocument(extractedText)
       ]);
 
-      // Lower confidence threshold for logs and error documents
       const confidenceThreshold = metadata.category === 'logs_and_errors' ? 0.5 : 0.7;
 
       if (metadata.confidence < confidenceThreshold) {
         const error = new Error("Document classification confidence too low");
-        await updateTrace(run.id, { title, fileType }, { metadata }, error);
-        await addSystemFeedback(run.id, false, "Low confidence in document classification");
+        await updateTrace(run?.id, { title, fileType }, { metadata }, error);
+        await addSystemFeedback(run?.id, false, "Low confidence in document classification");
         return res.status(400).json({
           error: "Document classification confidence too low",
           details: metadata
         });
       }
 
-      // Store the embedding array directly without stringifying
       const document = await storage.createDocument({
         title,
         content: extractedText,
         embedding,
-        userId: req.user.id,
+        userId: req.user!.id,
         metadata: {
           category: metadata.category,
           tags: metadata.tags,
@@ -151,22 +145,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      await updateTrace(run.id, { title, fileType }, { document, metadata });
-      await addSystemFeedback(run.id, true, "Document successfully uploaded and processed");
+      await updateTrace(run?.id, { title, fileType }, { document, metadata });
+      await addSystemFeedback(run?.id, true, "Document successfully uploaded and processed");
 
       res.status(201).json({
         ...document,
         confidence: metadata.confidence
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Document creation error:", error);
-      await updateTrace(run.id, req.body, undefined, error);
-      await addSystemFeedback(run.id, false, error.message);
+      await updateTrace(run?.id, req.body, undefined, error);
+      await addSystemFeedback(run?.id, false, error instanceof Error ? error.message : "Unknown error");
 
       if (error instanceof ZodError) {
         res.status(400).json({ error: "Invalid document data", details: error.errors });
       } else {
-        res.status(500).json({ error: error.message || "Failed to create document" });
+        res.status(500).json({ 
+          error: error instanceof Error ? error.message : "Failed to create document" 
+        });
       }
     }
   });
@@ -179,13 +175,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const documents = await storage.getDocuments();
-      await updateTrace(run.id, {}, { count: documents.length });
-      await addSystemFeedback(run.id, true);
+      await updateTrace(run?.id, {}, { count: documents.length });
+      await addSystemFeedback(run?.id, true);
       res.json(documents);
     } catch (error) {
       console.error("Document retrieval error:", error);
-      await updateTrace(run.id, {}, undefined, error);
-      await addSystemFeedback(run.id, false, error.message);
+      await updateTrace(run?.id, {}, undefined, error);
+      await addSystemFeedback(run?.id, false, error.message);
       res.status(500).json({ error: "Failed to retrieve documents" });
     }
   });
