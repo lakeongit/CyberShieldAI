@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
-import { ArrowLeft, FileText, Tags, Trash2, Plus, X, UserCircle, Shield } from "lucide-react";
+import { ArrowLeft, FileText, Tags, Trash2, Plus, X, UserCircle, Shield, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
+import { DocumentPreview } from "@/components/document-preview";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -169,7 +170,7 @@ export default function AdminPage() {
                         <Button 
                           variant={u.isAdmin ? "destructive" : "default"}
                           size="sm"
-                          disabled={u.id === user?.id} // Prevent self-modification
+                          disabled={u.id === user?.id} 
                         >
                           {u.isAdmin ? "Remove Admin" : "Make Admin"}
                         </Button>
@@ -224,8 +225,9 @@ function DocumentCard({
   onUpdateTags: (tags: string[]) => void;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [newTag, setNewTag] = useState("");
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [newTag, setNewTag] = useState("");
   const [editedTags, setEditedTags] = useState(document.metadata?.tags || []);
 
   const handleAddTag = () => {
@@ -273,6 +275,14 @@ function DocumentCard({
         )}
       </CardContent>
       <CardFooter className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsPreviewOpen(true)}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          Preview
+        </Button>
         <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -353,6 +363,11 @@ function DocumentCard({
             </div>
           </DialogContent>
         </Dialog>
+        <DocumentPreview
+          document={document}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+        />
       </CardFooter>
     </Card>
   );
