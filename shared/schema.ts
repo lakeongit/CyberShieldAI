@@ -16,12 +16,12 @@ export const documents = pgTable("documents", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   // Using pgvector's vector type for embeddings
-  embedding: text("embedding").$type<number[]>().notNull(),
+  embedding: text("embedding").notNull(),
   metadata: jsonb("metadata").$type<{
     tags: string[];
     category: string;
     summary: string;
-  }>(),
+  }>().notNull().default({ tags: [], category: 'uncategorized', summary: '' }),
   createdAt: text("created_at").notNull(),
   userId: integer("user_id").references(() => users.id),
 });
@@ -41,6 +41,12 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertDocumentSchema = createInsertSchema(documents).pick({
   title: true,
   content: true,
+}).extend({
+  metadata: z.object({
+    tags: z.array(z.string()).default([]),
+    category: z.string().default('uncategorized'),
+    summary: z.string().default(''),
+  }).optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
