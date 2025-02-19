@@ -16,6 +16,33 @@ export default function DocsPage() {
             <Link href="/">
               <Button variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Chat
+
+          <div className="max-w-3xl mx-auto">
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>System Overview</CardTitle>
+                <CardDescription>
+                  Learn about the core features and capabilities of our cybersecurity chatbot
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="prose prose-sm">
+                <h3>Key Features</h3>
+                <ul>
+                  <li><strong>Domain-Specific Knowledge:</strong> Specializes in cybersecurity topics with a curated knowledge base</li>
+                  <li><strong>Document Management:</strong> Upload and manage cybersecurity documents for enhanced responses</li>
+                  <li><strong>Secure Authentication:</strong> Protected access with user authentication</li>
+                  <li><strong>Interactive Chat:</strong> Real-time conversation with AI-powered responses</li>
+                </ul>
+                
+                <h3>How It Works</h3>
+                <p>
+                  The system combines advanced language models with a specialized cybersecurity knowledge base to provide accurate, 
+                  context-aware responses. Documents are processed and indexed to enhance the AI's understanding of specific topics.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
               </Button>
             </Link>
           </div>
