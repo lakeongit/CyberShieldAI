@@ -47,9 +47,9 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
   // Handle PDF files
   if (fileType === '.pdf') {
     try {
-      // Import pdf-parse dynamically to avoid the test file issue
       const pdfParse = (await import('pdf-parse')).default;
-      const data = await pdfParse(buffer);
+      // Create a data object with the buffer for pdf-parse
+      const data = await pdfParse(Buffer.from(buffer));
       // Remove null bytes and normalize whitespace
       return data.text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
     } catch (error) {
