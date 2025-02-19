@@ -1,6 +1,6 @@
-import { users, documents, type User, type InsertUser, type Document, type InsertDocument } from "@shared/schema";
+import { users, documents, conversations, messages, type User, type InsertUser, type Document, type InsertDocument, type Conversation, type InsertConversation, type Message, type InsertMessage } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -21,6 +21,16 @@ export interface IStorage {
   searchSimilarDocuments(embedding: number[], limit?: number): Promise<Document[]>;
   deleteDocument(id: number): Promise<void>;
   updateDocumentTags(id: number, tags: string[]): Promise<Document>;
+
+  // Conversation operations
+  createConversation(conversation: InsertConversation & { userId: number }): Promise<Conversation>;
+  getConversation(id: number): Promise<Conversation | undefined>;
+  getConversationsByUserId(userId: number): Promise<Conversation[]>;
+  searchConversations(userId: number, query: string): Promise<Conversation[]>;
+
+  // Message operations
+  createMessage(message: InsertMessage & { conversationId: number }): Promise<Message>;
+  getMessagesByConversationId(conversationId: number): Promise<Message[]>;
 
   sessionStore: session.Store;
 }
@@ -122,6 +132,67 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return updatedDoc;
+  }
+
+  async createConversation(conversation: InsertConversation & { userId: number }): Promise<Conversation> {
+    const [newConversation] = await db.insert(conversations)
+      .values({
+        title: conversation.title,
+        userId: conversation.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newConversation;
+  }
+
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    const [conversation] = await db.select()
+      .from(conversations)
+      .where(eq(conversations.id, id));
+    return conversation;
+  }
+
+  async getConversationsByUserId(userId: number): Promise<Conversation[]> {
+    return db.select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt));
+  }
+
+  async searchConversations(userId: number, query: string): Promise<Conversation[]> {
+    return db.select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.userId, userId),
+          sql`${conversations.title} ILIKE ${`%${query}%`}`
+        )
+      )
+      .orderBy(desc(conversations.updatedAt));
+  }
+
+  async createMessage(message: InsertMessage & { conversationId: number }): Promise<Message> {
+    const [newMessage] = await db.insert(messages)
+      .values({
+        ...message,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    // Update conversation's updatedAt timestamp
+    await db.update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, message.conversationId));
+
+    return newMessage;
+  }
+
+  async getMessagesByConversationId(conversationId: number): Promise<Message[]> {
+    return db.select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
   }
 }
 
