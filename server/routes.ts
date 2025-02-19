@@ -8,15 +8,28 @@ import { ZodError } from "zod";
 import mammoth from 'mammoth';
 import sharp from 'sharp';
 import { createTrace, updateTrace, addSystemFeedback } from "./services/langsmith";
+import { PDFExtract } from 'pdf.js-extract';
+const pdfExtract = new PDFExtract();
 
 // Function to process different document types
 async function extractTextFromDocument(content: string, fileType: string): Promise<string> {
   try {
     const buffer = Buffer.from(content, 'base64');
 
-    // For text and markdown files, use UTF-8 encoding explicitly
-    if (fileType === '.txt' || fileType === '.md') {
-      return buffer.toString('utf-8').replace(/\0/g, '').replace(/\s+/g, ' ').trim();
+    // For markdown files, preserve formatting
+    if (fileType === '.md') {
+      return buffer.toString('utf-8')
+        .replace(/\0/g, '') // Remove null bytes
+        .replace(/\r\n/g, '\n') // Normalize line endings
+        .trim();
+    }
+
+    // For text files, simple UTF-8 encoding
+    if (fileType === '.txt') {
+      return buffer.toString('utf-8')
+        .replace(/\0/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
     }
 
     // Handle image files
@@ -48,16 +61,30 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
     // Handle PDF files
     if (fileType === '.pdf') {
       try {
-        const pdfParse = (await import('pdf-parse')).default;
-        // Pass the buffer directly to pdf-parse
-        const data = await pdfParse(buffer, {
-          max: 0, // No page limit
-          version: 'v2.0.550'
-        });
-        return data.text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
+        const options = {};
+        const data = await pdfExtract.extractBuffer(buffer, options);
+
+        if (!data || !data.pages || data.pages.length === 0) {
+          throw new Error('No content found in PDF');
+        }
+
+        // Extract text from all pages and join them
+        const text = data.pages
+          .map(page => page.content.map(item => item.str).join(' '))
+          .join('\n')
+          .replace(/\0/g, '') // Remove null bytes
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
+
+        if (!text) {
+          throw new Error('No text content extracted from PDF');
+        }
+
+        return text;
       } catch (error) {
         console.error('PDF processing error:', error);
-        throw new Error('Failed to process PDF file');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown PDF processing error';
+        throw new Error(`Failed to process PDF file: ${errorMessage}`);
       }
     }
 
