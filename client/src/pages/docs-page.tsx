@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, BookOpen, MessageCircle, Upload, Users, Shield, Code, Database, Bot } from "lucide-react";
+import { ArrowLeft, BookOpen, MessageCircle, Upload, Users, Shield, Code, Database, Bot, ScrollText, History } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 
 export default function DocsPage() {
   return (
@@ -132,7 +133,10 @@ export default function DocsPage() {
               <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                 <Card className="border-none shadow-lg bg-gradient-to-br from-white to-muted h-full">
                   <CardHeader>
-                    <Upload className="h-8 w-8 text-primary mb-2" />
+                    <div className="flex items-center justify-between">
+                      <Upload className="h-8 w-8 text-primary mb-2" />
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">Admin Only</Badge>
+                    </div>
                     <CardTitle>Document System</CardTitle>
                     <CardDescription>Knowledge Management</CardDescription>
                   </CardHeader>
@@ -158,7 +162,10 @@ export default function DocsPage() {
               <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                 <Card className="border-none shadow-lg bg-gradient-to-br from-white to-muted h-full">
                   <CardHeader>
-                    <Users className="h-8 w-8 text-primary mb-2" />
+                    <div className="flex items-center justify-between">
+                      <Users className="h-8 w-8 text-primary mb-2" />
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">Admin Only</Badge>
+                    </div>
                     <CardTitle>Access Control</CardTitle>
                     <CardDescription>Security & Permissions</CardDescription>
                   </CardHeader>
@@ -181,6 +188,60 @@ export default function DocsPage() {
                 </Card>
               </motion.div>
             </div>
+          </section>
+
+          {/* Add new Admin Features section */}
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-center mb-8">Admin Features</h2>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">Admin Only</Badge>
+            </div>
+            <Card className="border-none shadow-lg bg-gradient-to-br from-white to-muted">
+              <CardContent className="p-8">
+                <div className="grid md:grid-cols-2 gap-12">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                      <ScrollText className="h-5 w-5 text-primary" />
+                      Audit Logs
+                    </h3>
+                    <ul className="space-y-4">
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Comprehensive activity tracking</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Log retention management</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Advanced filtering and search</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary" />
+                      System Monitoring
+                    </h3>
+                    <ul className="space-y-4">
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Real-time system metrics</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Usage statistics and reports</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span>Performance monitoring</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Technical Architecture */}
