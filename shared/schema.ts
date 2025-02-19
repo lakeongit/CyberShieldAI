@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-c
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -14,7 +15,8 @@ export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  embedding: text("embedding").notNull(),
+  // Using pgvector's vector type for embeddings
+  embedding: text("embedding").$type<number[]>().notNull(),
   metadata: jsonb("metadata").$type<{
     tags: string[];
     category: string;
