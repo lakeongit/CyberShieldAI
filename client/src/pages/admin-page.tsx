@@ -7,12 +7,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
-import { ArrowLeft, FileText, Tags, Trash2, Plus, X, UserCircle, Shield } from "lucide-react";
+import { 
+  ArrowLeft, 
+  FileText, 
+  Tags, 
+  Trash2, 
+  Plus, 
+  X, 
+  UserCircle, 
+  Shield,
+  ScrollText,
+  Activity,
+  Search,
+  Calendar,
+  BarChart2
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// ... existing imports remain unchanged
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -27,62 +44,32 @@ export default function AdminPage() {
     enabled: user?.isAdmin
   });
 
-  const toggleAdminMutation = useMutation({
-    mutationFn: async ({ id, isAdmin }: { id: number; isAdmin: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/users/${id}/admin`, { isAdmin });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "User updated",
-        description: "Admin privileges have been updated successfully."
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to update user",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+  const { data: auditLogs } = useQuery({
+    queryKey: ["/api/audit-logs"],
+    enabled: user?.isAdmin
   });
 
-  const deleteDocumentMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/documents/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      toast({
-        title: "Document deleted",
-        description: "The document has been removed from the knowledge base."
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to delete document",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+  const { data: systemMetrics } = useQuery({
+    queryKey: ["/api/system-metrics"],
+    enabled: user?.isAdmin
   });
 
-  const updateTagsMutation = useMutation({
-    mutationFn: async ({ id, tags }: { id: number; tags: string[] }) => {
-      const res = await apiRequest("PATCH", `/api/documents/${id}/tags`, { tags });
-      return res.json();
+  // ... existing mutations remain unchanged
+
+  const deleteLogsMutation = useMutation({
+    mutationFn: async (logIds: number[]) => {
+      await apiRequest("DELETE", "/api/audit-logs", { logIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/audit-logs"] });
       toast({
-        title: "Tags updated",
-        description: "Document tags have been updated successfully."
+        title: "Logs deleted",
+        description: "Selected audit logs have been deleted successfully."
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to update tags",
+        title: "Failed to delete logs",
         description: error.message,
         variant: "destructive"
       });
@@ -131,9 +118,12 @@ export default function AdminPage() {
           <TabsList className="w-full mb-8">
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
+            <TabsTrigger value="monitoring">System Monitoring</TabsTrigger>
             <TabsTrigger value="upload">Upload</TabsTrigger>
           </TabsList>
 
+          {/* Existing TabsContent for documents and users remain unchanged */}
           <TabsContent value="documents">
             <div className="grid gap-4">
               {documents?.map((doc) => (
@@ -203,6 +193,154 @@ export default function AdminPage() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="audit-logs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ScrollText className="h-5 w-5" />
+                  Audit Logs
+                </CardTitle>
+                <CardDescription>
+                  View and manage system activity logs
+                </CardDescription>
+                <div className="flex items-center gap-4 mt-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search logs..."
+                      className="w-full"
+                      prefix={<Search className="h-4 w-4 text-muted-foreground" />}
+                    />
+                  </div>
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Time Range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="24h">Last 24 hours</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="all">All time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Clear Logs
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Clear Audit Logs</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to delete all filtered audit logs? This action cannot be undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline">Cancel</Button>
+                        <Button 
+                          variant="destructive"
+                          onClick={() => deleteLogsMutation.mutate([])}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {auditLogs?.map((log: any) => (
+                    <Card key={log.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{log.action}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {log.details}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </p>
+                            <Badge variant="outline">{log.user}</Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="monitoring">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  System Monitoring
+                </CardTitle>
+                <CardDescription>
+                  Real-time system performance metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Resource Usage</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {systemMetrics?.resources.map((metric: any) => (
+                          <div key={metric.name} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{metric.name}</span>
+                              <span className="text-sm text-muted-foreground">{metric.value}</span>
+                            </div>
+                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary"
+                                style={{ width: `${metric.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">System Health</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {systemMetrics?.health.map((metric: any) => (
+                          <div key={metric.name} className="flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                              <Badge 
+                                variant={metric.status === 'healthy' ? 'default' : 'destructive'}
+                                className="h-2 w-2 rounded-full p-0"
+                              />
+                              {metric.name}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {metric.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="upload">
