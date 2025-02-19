@@ -11,66 +11,72 @@ import { createTrace, updateTrace, addSystemFeedback } from "./services/langsmit
 
 // Function to process different document types
 async function extractTextFromDocument(content: string, fileType: string): Promise<string> {
-  const buffer = Buffer.from(content, 'base64');
+  try {
+    const buffer = Buffer.from(content, 'base64');
 
-  // For text and markdown files, convert base64 back to text
-  if (fileType === '.txt' || fileType === '.md') {
-    return buffer.toString('utf-8');
-  }
-
-  // Handle image files
-  if (['.png', '.jpg', '.jpeg'].includes(fileType.toLowerCase())) {
-    try {
-      const image = sharp(buffer);
-      const metadata = await image.metadata();
-      const analysis = {
-        format: metadata.format,
-        width: metadata.width,
-        height: metadata.height,
-        space: metadata.space,
-        channels: metadata.channels,
-        depth: metadata.depth,
-      };
-      return JSON.stringify({
-        type: 'image',
-        format: metadata.format,
-        dimensions: `${metadata.width}x${metadata.height}`,
-        properties: analysis,
-        extracted_at: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Image processing error:', error);
-      throw new Error('Failed to process image file');
+    // For text and markdown files, use UTF-8 encoding explicitly
+    if (fileType === '.txt' || fileType === '.md') {
+      return buffer.toString('utf-8').replace(/\0/g, '').replace(/\s+/g, ' ').trim();
     }
-  }
 
-  // Handle PDF files
-  if (fileType === '.pdf') {
-    try {
-      const pdfParse = (await import('pdf-parse')).default;
-      // Create a data object with the buffer for pdf-parse
-      const data = await pdfParse(Buffer.from(buffer));
-      // Remove null bytes and normalize whitespace
-      return data.text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
-    } catch (error) {
-      console.error('PDF processing error:', error);
-      throw new Error('Failed to process PDF file');
+    // Handle image files
+    if (['.png', '.jpg', '.jpeg'].includes(fileType.toLowerCase())) {
+      try {
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+        const analysis = {
+          format: metadata.format,
+          width: metadata.width,
+          height: metadata.height,
+          space: metadata.space,
+          channels: metadata.channels,
+          depth: metadata.depth,
+        };
+        return JSON.stringify({
+          type: 'image',
+          format: metadata.format,
+          dimensions: `${metadata.width}x${metadata.height}`,
+          properties: analysis,
+          extracted_at: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Image processing error:', error);
+        throw new Error('Failed to process image file');
+      }
     }
-  }
 
-  // Handle Word documents
-  if (fileType === '.doc' || fileType === '.docx') {
-    try {
-      const result = await mammoth.extractRawText({ buffer });
-      // Remove null bytes and normalize whitespace
-      return result.value.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
-    } catch (error) {
-      console.error('DOC processing error:', error);
-      throw new Error('Failed to process DOC file');
+    // Handle PDF files
+    if (fileType === '.pdf') {
+      try {
+        const pdfParse = (await import('pdf-parse')).default;
+        // Pass the buffer directly to pdf-parse
+        const data = await pdfParse(buffer, {
+          max: 0, // No page limit
+          version: 'v2.0.550'
+        });
+        return data.text.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
+      } catch (error) {
+        console.error('PDF processing error:', error);
+        throw new Error('Failed to process PDF file');
+      }
     }
-  }
 
-  throw new Error(`Unsupported file type: ${fileType}`);
+    // Handle Word documents
+    if (fileType === '.doc' || fileType === '.docx') {
+      try {
+        const result = await mammoth.extractRawText({ buffer });
+        return result.value.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
+      } catch (error) {
+        console.error('DOC processing error:', error);
+        throw new Error('Failed to process DOC file');
+      }
+    }
+
+    throw new Error(`Unsupported file type: ${fileType}`);
+  } catch (error) {
+    console.error('Document processing error:', error);
+    throw error;
+  }
 }
 
 async function analyzeAndClassifyDocument(content: string) {
