@@ -1,0 +1,162 @@
+Prompt: Building a Cybersecurity Domain Expert Chatbot with Extended Features
+Overview
+Develop a chatbot that serves as a domain expert in cybersecurity, leveraging OpenAI as the primary large language model (LLM. The system should use Postgres as a vector database for storing and retrieving document embeddings. It will feature prompt improvement capabilities, conversational memory, and advanced AI-driven functionalities such as document analysis, classification, and tagging.
+
+The solution will include:
+
+An Admin Interface for document management (upload, update, drag-and-drop).
+A User-Facing Chat Interface that uses a retrieval-augmented generation (RAG) pipeline for domain-specific answers.
+Comprehensive Documentation published at a /docs endpoint detailing the system’s setup, usage, and maintenance.
+The following design elements are derived from the accompanying sketches:
+
+Admin Interface Layout
+
+Tabs/Sections:
+Documents (for managing uploads, classification, tagging)
+Policies (for storing and updating cybersecurity policies)
+Access Control (to manage user roles/permissions)
+Functionality:
+Drag-and-Drop Uploads of various file types (Markdown, PDF, Text).
+AI-Powered Document Processing (analysis, classification, tagging).
+Database Updates: Ingest new documents, re-index in the Postgres VectorDB.
+Security: Restricted admin interface, separate from the user-facing chat.
+Chat Interface Layout
+
+Chat Box with:
+Search capability for relevant cybersecurity topics.
+Conversational Memory to maintain context across multiple user turns.
+Response Generation:
+Primary: Use retrieved context from the Postgres VectorDB to generate domain-specific answers.
+Fallback: If relevant context is insufficient, rely on OpenAI to generate an answer (still referencing any discovered context).
+Prompt Improver: An optional layer that refines user queries for clarity and context before final retrieval or generation.
+AI-Powered Analysis:
+The chatbot can perform advanced tasks (e.g., summarization, Q&A, classification) on uploaded or existing documents.
+Citation/Reference:
+All responses include references to the source documents stored in the vector database.
+RAG Pipeline
+
+LangChain for building the retrieval-augmented generation pipeline:
+Document Ingestion: Markdown, PDF, and Text files are parsed and loaded into the system.
+Vectorization: Use an OpenAI or other embedding model to transform documents into vector representations stored in Postgres.
+Retrieval: Query the vector database to find relevant documents for a given user query.
+Context Injection: Combine the retrieved context with the user query for more accurate LLM responses.
+Conversational Memory: Maintain short- or long-term memory of the conversation using LangChain’s memory components.
+LangSmith Tracing
+
+Tracing & Debugging: Use LangSmith to capture and visualize the end-to-end query flow. This includes:
+Prompt improvement steps.
+Retrieval steps (which documents were retrieved).
+OpenAI LLM calls and outputs.
+Response generation and final answer.
+AI-Powered Document Features
+
+Analysis: Summarize or extract insights from large documents.
+Classification: Automatically classify documents into cybersecurity categories (e.g., best practices, frameworks, incident response).
+Tagging: Assign relevant keywords or tags to each document for better organization and retrieval.
+Comprehensive Documentation
+
+Publish a /docs page detailing:
+System Architecture: Diagrams explaining the flow from user query to final response.
+Installation & Configuration: Steps to set up the system, including environment variables and database setup.
+Admin Interface Usage: How to upload, update, classify, and tag documents.
+Chat Interface Usage: Explanation of conversational memory, prompt improvement, and fallback mechanisms.
+Security & Access Control: How roles and permissions are managed.
+Troubleshooting & FAQ: Common issues and solutions, logs/traces using LangSmith, etc.
+Technical Requirements
+Core Chatbot Stack
+
+OpenAI as the LLM.
+Postgres with vector extension (e.g., pgvector) as the vector store.
+LangChain for building the RAG pipeline and managing conversational memory.
+LangSmith for tracing and debugging.
+Admin Interface
+
+Securely accessible only by authorized personnel.
+Drag-and-Drop support for uploading Markdown, PDF, and Text files.
+Document Processing: Automatic AI-driven analysis, classification, tagging.
+Index Management: Automated re-indexing in Postgres VectorDB upon document additions/updates.
+Chat Interface
+
+Conversational Memory: Maintain user context across multiple turns.
+Prompt Improver: Preprocess user queries to refine or clarify before retrieval.
+Answer Generation:
+Primary: Query relevant documents from Postgres, inject them into the LLM prompt.
+Fallback: Use OpenAI for general answers if not enough relevant context is found.
+Citation & Source: Always include references to the source documents in the final answer.
+Deployment & Documentation
+
+Provide detailed steps for deploying the system (Docker or cloud environment).
+Publish usage guidelines, developer notes, and API references on the /docs page.
+Include instructions for setting up environment variables, connecting to the Postgres database, and integrating with the OpenAI API.
+Example High-Level Flow
+User Query
+
+User enters a question about cybersecurity best practices in the chat.
+The prompt improver refines the query for clarity.
+Vector Retrieval
+
+The system searches Postgres VectorDB for relevant documents.
+If matches are found, these are passed to LangChain to build the context.
+LLM Generation
+
+The refined query + retrieved context is sent to OpenAI.
+OpenAI returns a domain-specific answer.
+Fallback
+
+If no relevant documents are found, rely on OpenAI to provide a more general answer.
+The system still attempts to cite any partial or previously known sources if applicable.
+Response & Citation
+
+The chatbot returns the final answer, including:
+The user’s original question (optionally).
+The system’s response.
+Document citations from the vector database.
+Admin Updates
+
+An admin logs into the separate interface.
+Uploads a new PDF on emerging cyber threats via drag-and-drop.
+The system processes and classifies the document, tags it, and updates the Postgres vector index.
+The updated document is immediately available for retrieval in future user queries.
+Key Implementation Steps
+Environment Setup
+
+Install and configure Postgres with vector support (e.g., pgvector).
+Create necessary tables/schemas for storing documents and embeddings.
+Document Ingestion Pipeline
+
+Parse uploaded files (Markdown, PDF, Text).
+Generate embeddings using OpenAI’s embedding model.
+Store embeddings + metadata in Postgres VectorDB.
+Classify and tag documents using an AI model (optionally OpenAI or another classifier).
+LangChain RAG Flow
+
+Configure a RetrievalQA or Conversational RetrievalQA chain with:
+A Postgres retriever.
+Memory components for chat history.
+Prompt templates for improved user queries.
+LangSmith Integration
+
+Enable tracing to capture query steps, retrieval hits, and LLM calls.
+View logs for debugging and performance insights.
+User Interface
+
+Build a chat UI that shows:
+Chat conversation.
+Option to switch or refine the query.
+References for each response.
+Admin Interface
+
+Provide secure login.
+Offer a dashboard with drag-and-drop document upload.
+Display classification and tagging results.
+Enable manual editing or re-tagging of documents.
+Provide logs or summaries of ingestion steps and potential errors.
+Documentation
+
+Publish a /docs page with:
+Architectural diagrams.
+Step-by-step setup guides.
+Admin interface instructions.
+Chat usage instructions.
+Security best practices.
+Troubleshooting tips and FAQ.
