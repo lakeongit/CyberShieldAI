@@ -192,7 +192,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Chat endpoint with improved context retrieval
   app.post("/api/chat", async (req: Request, res: Response) => {
-    const run = await createTrace("chat_completion");
+    let run;
+    try {
+      run = await createTrace("chat_completion");
+    } catch (error) {
+      console.warn("Failed to create trace:", error);
+    }
+
     try {
       if (!req.isAuthenticated()) {
         throw new Error("Authentication required");
@@ -241,11 +247,13 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       });
 
       const response = JSON.parse(completion.choices[0].message.content);
-      await updateTrace(run.id, { message, improvedQuery }, { 
-        response: response.answer,
-        relevantDocs: relevantDocs.length 
-      });
-      await addSystemFeedback(run.id, true, "Successfully generated response");
+      if (run?.id) {
+        await updateTrace(run.id, { message, improvedQuery }, { 
+          response: response.answer,
+          relevantDocs: relevantDocs.length 
+        });
+        await addSystemFeedback(run.id, true, "Successfully generated response");
+      }
 
       res.json({
         response: response.answer,
@@ -258,8 +266,10 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       });
     } catch (error) {
       console.error("Chat error:", error);
-      await updateTrace(run.id, req.body, undefined, error);
-      await addSystemFeedback(run.id, false, error.message);
+      if (run?.id) {
+        await updateTrace(run.id, req.body, undefined, error);
+        await addSystemFeedback(run.id, false, error.message);
+      }
       res.status(500).json({ error: "Failed to process chat message" });
     }
   });
