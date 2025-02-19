@@ -1,25 +1,22 @@
+
 import OpenAI from "openai";
-import { createTrace, updateTrace } from "./services/langsmith";
 
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const run = await createTrace("generate_embedding");
   try {
     const response = await openai.embeddings.create({
       model: "text-embedding-ada-002",
       input: text,
     });
-    await updateTrace(run.id, { text }, { embedding: response.data[0].embedding });
     return response.data[0].embedding;
   } catch (error: any) {
-    await updateTrace(run.id, { text }, undefined, error);
+    console.error("Embedding generation error:", error);
     throw error;
   }
 }
 
 export async function analyzeDocument(text: string) {
-  const run = await createTrace("analyze_document");
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -39,23 +36,19 @@ export async function analyzeDocument(text: string) {
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content!) as {
+    return JSON.parse(response.choices[0].message.content!) as {
       tags: string[];
       category: string;
       summary: string;
       confidence: number;
     };
-
-    await updateTrace(run.id, { text }, { result });
-    return result;
   } catch (error: any) {
-    await updateTrace(run.id, { text }, undefined, error);
+    console.error("Document analysis error:", error);
     throw error;
   }
 }
 
 export async function improveQuery(query: string): Promise<string> {
-  const run = await createTrace("improve_query");
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -72,10 +65,9 @@ Respond with JSON in the format: {"query": "improved search query"}`
     });
 
     const result = JSON.parse(response.choices[0].message.content!);
-    await updateTrace(run.id, { query }, { improvedQuery: result.query });
     return result.query;
   } catch (error: any) {
-    await updateTrace(run.id, { query }, undefined, error);
+    console.error("Query improvement error:", error);
     throw error;
   }
 }
