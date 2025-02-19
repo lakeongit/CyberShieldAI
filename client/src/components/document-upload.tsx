@@ -1,26 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { insertDocumentSchema } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Loader2, Upload } from "lucide-react";
+import { useState, useCallback } from "react";
+import { AlertCircle, FileText, Loader2, Upload, X } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { readFileAsText, formatBytes } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+interface UploadFile {
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'error' | 'success';
+  error?: string;
+}
 
 export function DocumentUpload() {
   const { toast } = useToast();
-  
-  const form = useForm({
-    resolver: zodResolver(insertDocumentSchema),
-    defaultValues: {
-      title: "",
-      content: "",
-    },
-  });
+  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
@@ -28,82 +28,152 @@ export function DocumentUpload() {
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Document uploaded",
-        description: "The document has been processed and added to the knowledge base.",
-      });
-      form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
     },
-    onError: (error: Error) => {
+  });
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const processFile = async (file: File) => {
+    try {
+      const content = await readFileAsText(file);
+      const title = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+
+      await uploadMutation.mutateAsync({ title, content });
+
+      setFiles(prev =>
+        prev.map(f =>
+          f.file === file
+            ? { ...f, status: 'success', progress: 100 }
+            : f
+        )
+      );
+
+      toast({
+        title: "Document uploaded",
+        description: `${file.name} has been processed and added to the knowledge base.`,
+      });
+    } catch (error) {
+      setFiles(prev =>
+        prev.map(f =>
+          f.file === file
+            ? { ...f, status: 'error', error: error.message }
+            : f
+        )
+      );
+
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: `Failed to upload ${file.name}: ${error.message}`,
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const newFiles = Array.from(e.dataTransfer.files).map(file => ({
+      file,
+      progress: 0,
+      status: 'pending' as const,
+    }));
+
+    setFiles(prev => [...prev, ...newFiles]);
+
+    // Process each file
+    newFiles.forEach(async ({ file }) => {
+      setFiles(prev =>
+        prev.map(f =>
+          f.file === file
+            ? { ...f, status: 'uploading' }
+            : f
+        )
+      );
+
+      await processFile(file);
+    });
+  }, []);
+
+  const removeFile = (file: File) => {
+    setFiles(prev => prev.filter(f => f.file !== file));
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Upload Document
+          Upload Documents
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => uploadMutation.mutate(data))}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Document Title</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="e.g., Cybersecurity Best Practices" />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+      <CardContent className="space-y-4">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+            isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+          )}
+        >
+          <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mb-1">
+            Drag and drop your documents here
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Supports plain text (.txt), markdown (.md)
+          </p>
+        </div>
 
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Content</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Paste document content here..."
-                      className="h-64 font-mono"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={uploadMutation.isPending}
-            >
-              {uploadMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Upload Document"
-              )}
-            </Button>
-          </form>
-        </Form>
+        {files.length > 0 && (
+          <div className="space-y-2">
+            {files.map(({ file, status, progress, error }) => (
+              <div
+                key={file.name}
+                className="flex items-center gap-2 p-2 rounded border bg-card"
+              >
+                <FileText className="h-4 w-4 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatBytes(file.size)}
+                  </p>
+                  {status === 'uploading' && (
+                    <Progress value={progress} className="h-1 mt-2" />
+                  )}
+                  {status === 'error' && (
+                    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {error}
+                    </p>
+                  )}
+                </div>
+                {status === 'uploading' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => removeFile(file)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
