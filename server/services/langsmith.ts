@@ -1,9 +1,16 @@
 import { Client } from "langsmith";
 
-// Initialize LangSmith client
+const PROJECT_NAME = "cybersecurity-expert-chatbot";
+
+if (!process.env.LANGSMITH_API_KEY) {
+  throw new Error("LANGSMITH_API_KEY is required for LangSmith integration");
+}
+
+// Initialize LangSmith client with project configuration
 const client = new Client({
   apiUrl: "https://api.smith.langchain.com",
   apiKey: process.env.LANGSMITH_API_KEY,
+  projectName: PROJECT_NAME,
 });
 
 // Create a trace handler for monitoring AI interactions
@@ -13,6 +20,7 @@ export async function createTrace(name: string) {
     inputs: {},
     run_type: "chain",
     start_time: Date.now(),
+    project_name: PROJECT_NAME,
   });
   return run;
 }
@@ -33,4 +41,9 @@ export async function addFeedback(runId: string, key: string, score: number, com
     score,
     comment,
   });
+}
+
+// Helper function to add system feedback
+export async function addSystemFeedback(runId: string, success: boolean, message?: string) {
+  await addFeedback(runId, 'system_evaluation', success ? 1 : 0, message);
 }
