@@ -7,10 +7,10 @@ import { Separator } from "@/components/ui/separator";
 
 export function Documentation() {
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 max-w-6xl">
       {/* Header Section */}
-      <div className="mb-8">
-        <nav className="flex items-center space-x-2 mb-4 text-muted-foreground">
+      <header className="mb-12">
+        <nav className="flex items-center space-x-2 mb-6 text-muted-foreground">
           <Link href="/">
             <Button variant="ghost" size="sm" className="flex items-center">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -21,143 +21,168 @@ export function Documentation() {
           <span>Documentation</span>
         </nav>
 
-        {/* Quick Links */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Badge variant="outline">Document Management: Upload and manage cybersecurity documents for enhanced responses</Badge>
-          <Badge variant="outline">Secure Authentication: Protected access with user authentication</Badge>
-          <Badge variant="outline">Interactive Chat: Real-time conversation with AI-powered responses</Badge>
-        </div>
-      </div>
-
-      {/* System Overview */}
-      <div className="mb-12">
-        <h1 className="text-3xl font-bold mb-4">System Overview</h1>
-        <Card className="p-6">
-          <p className="text-lg text-muted-foreground">
-            The Cybersecurity Expert Chatbot is an AI-powered assistant that provides domain-specific answers by leveraging advanced AI models and a curated knowledge base to provide expert-level cybersecurity guidance.
+        <h1 className="text-4xl font-bold mb-6">Cybersecurity Expert System</h1>
+        <Card className="p-6 bg-primary/5">
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            An AI-powered assistant that provides expert-level cybersecurity guidance by leveraging advanced AI models and a curated knowledge base.
           </p>
         </Card>
-      </div>
+      </header>
+
+      {/* Key Features Section */}
+      <section className="mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-6 border-l-4 border-primary">
+            <Badge variant="outline" className="mb-2">Document Management</Badge>
+            <p className="text-sm">Upload and manage cybersecurity documents for enhanced responses</p>
+          </Card>
+          <Card className="p-6 border-l-4 border-primary">
+            <Badge variant="outline" className="mb-2">Secure Authentication</Badge>
+            <p className="text-sm">Protected access with user authentication</p>
+          </Card>
+          <Card className="p-6 border-l-4 border-primary">
+            <Badge variant="outline" className="mb-2">Interactive Chat</Badge>
+            <p className="text-sm">Real-time conversation with AI-powered responses</p>
+          </Card>
+        </div>
+      </section>
 
       {/* How It Works Section */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">How It Works</h2>
-        <Card className="p-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="text-xl font-semibold mb-3">1. Ask Questions</h3>
-              <p className="text-muted-foreground">
-                Input your cybersecurity queries and receive expert-level responses backed by our knowledge base.
-              </p>
+      <section className="mb-16">
+        <h2 className="text-3xl font-bold mb-8">How It Works</h2>
+        <div className="relative">
+          <div className="absolute top-0 left-1/2 h-full w-0.5 bg-border -translate-x-1/2 md:block hidden" />
+          <div className="space-y-12">
+            <div className="relative grid md:grid-cols-2 gap-8 items-center">
+              <Card className="p-6 md:text-right">
+                <h3 className="text-xl font-semibold mb-3">1. Ask Questions</h3>
+                <p className="text-muted-foreground">
+                  Input your cybersecurity queries through our intuitive chat interface
+                </p>
+              </Card>
+              <div className="hidden md:block" />
             </div>
-            <div>
-              <h3 className="text-xl font-semibold mb-3">2. AI Processing</h3>
-              <p className="text-muted-foreground">
-                Our AI analyzes your question and searches through verified cybersecurity documents to find relevant information.
-              </p>
+
+            <div className="relative grid md:grid-cols-2 gap-8 items-center">
+              <div className="hidden md:block" />
+              <Card className="p-6">
+                <h3 className="text-xl font-semibold mb-3">2. AI Processing</h3>
+                <p className="text-muted-foreground">
+                  Our AI analyzes your question and searches through verified cybersecurity documents
+                </p>
+              </Card>
             </div>
-            <div>
-              <h3 className="text-xl font-semibold mb-3">3. Expert Response</h3>
-              <p className="text-muted-foreground">
-                Receive detailed answers with citations from authoritative sources and industry best practices.
-              </p>
+
+            <div className="relative grid md:grid-cols-2 gap-8 items-center">
+              <Card className="p-6 md:text-right">
+                <h3 className="text-xl font-semibold mb-3">3. Expert Response</h3>
+                <p className="text-muted-foreground">
+                  Receive detailed answers with citations from authoritative sources
+                </p>
+              </Card>
+              <div className="hidden md:block" />
             </div>
           </div>
-        </Card>
-      </div>
+        </div>
+      </section>
 
       {/* Core Features */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">Core Features</h2>
-        <div className="grid md:grid-cols-3 gap-6">
+      <section className="mb-16">
+        <h2 className="text-3xl font-bold mb-8">Core Features</h2>
+        <div className="grid md:grid-cols-3 gap-8">
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <MessageSquare className="h-8 w-8 mb-4 text-primary" />
-            <h3 className="text-xl font-semibold mb-2">Chat Interface</h3>
-            <p className="text-muted-foreground mb-4">Interactive AI Assistant</p>
-            <ul className="space-y-2">
-              <li className="flex items-center text-sm">
-                • Ask questions about cybersecurity
-              </li>
-              <li className="flex items-center text-sm">
-                • Get context-aware responses
-              </li>
-              <li className="flex items-center text-sm">
-                • View source documents
-              </li>
-            </ul>
+            <h3 className="text-xl font-semibold mb-4">Chat Interface</h3>
+            <div className="space-y-3">
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Ask questions about cybersecurity
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Get context-aware responses
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                View source documents
+              </Badge>
+            </div>
           </Card>
 
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <FileText className="h-8 w-8 mb-4 text-primary" />
-            <h3 className="text-xl font-semibold mb-2">Document Management</h3>
-            <p className="text-muted-foreground mb-4">For Administrators</p>
-            <ul className="space-y-2">
-              <li className="flex items-center text-sm">
-                • Upload new documents
-              </li>
-              <li className="flex items-center text-sm">
-                • Automatic classification
-              </li>
-              <li className="flex items-center text-sm">
-                • Vector search integration
-              </li>
-            </ul>
+            <h3 className="text-xl font-semibold mb-4">Document Management</h3>
+            <div className="space-y-3">
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Upload new documents
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Automatic classification
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Vector search integration
+              </Badge>
+            </div>
           </Card>
 
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <Users className="h-8 w-8 mb-4 text-primary" />
-            <h3 className="text-xl font-semibold mb-2">User Access</h3>
-            <p className="text-muted-foreground mb-4">Authentication & Roles</p>
-            <ul className="space-y-2">
-              <li className="flex items-center text-sm">
-                • User registration/login
-              </li>
-              <li className="flex items-center text-sm">
-                • Admin privileges
-              </li>
-              <li className="flex items-center text-sm">
-                • Secure document access
-              </li>
-            </ul>
+            <h3 className="text-xl font-semibold mb-4">User Access</h3>
+            <div className="space-y-3">
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                User registration/login
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Admin privileges
+              </Badge>
+              <Badge variant="secondary" className="w-full justify-start text-sm">
+                Secure document access
+              </Badge>
+            </div>
           </Card>
         </div>
-      </div>
+      </section>
 
       {/* Technical Architecture */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">Technical Architecture</h2>
+      <section className="mb-16">
+        <h2 className="text-3xl font-bold mb-8">Technical Architecture</h2>
         <Card className="p-6">
-          <div className="space-y-6">
-            <div>
-              <Badge variant="outline" className="mb-2">Frontend</Badge>
-              <p className="text-sm">React with TypeScript, Tailwind CSS, and Shadcn UI components</p>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="space-y-4">
+              <Badge className="bg-primary/10 text-primary hover:bg-primary/20">Frontend</Badge>
+              <p className="text-sm text-muted-foreground">
+                React with TypeScript, Tailwind CSS, and Shadcn UI components
+              </p>
             </div>
-            <Separator />
-            <div>
-              <Badge variant="outline" className="mb-2">Backend</Badge>
-              <p className="text-sm">Express.js server with PostgreSQL database</p>
+            <div className="space-y-4">
+              <Badge className="bg-primary/10 text-primary hover:bg-primary/20">Backend</Badge>
+              <p className="text-sm text-muted-foreground">
+                Express.js server with PostgreSQL database
+              </p>
             </div>
-            <Separator />
-            <div>
-              <Badge variant="outline" className="mb-2">AI Integration</Badge>
-              <p className="text-sm">OpenAI GPT-4 for chat responses and document analysis</p>
+            <div className="space-y-4">
+              <Badge className="bg-primary/10 text-primary hover:bg-primary/20">AI Integration</Badge>
+              <p className="text-sm text-muted-foreground">
+                OpenAI GPT-4 for chat responses and document analysis
+              </p>
             </div>
           </div>
         </Card>
-      </div>
+      </section>
 
       {/* API Documentation Link */}
-      <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-        <Link href="/api-docs">
+      <Link href="/api-docs">
+        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold mb-2">API Documentation</h3>
-              <p className="text-muted-foreground">Explore the API endpoints and integration guides</p>
+              <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
+                API Documentation
+              </h3>
+              <p className="text-muted-foreground">
+                Explore the API endpoints and integration guides
+              </p>
             </div>
-            <Code className="h-8 w-8 text-primary" />
+            <Code className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
           </div>
-        </Link>
-      </Card>
+        </Card>
+      </Link>
     </div>
   );
 }
