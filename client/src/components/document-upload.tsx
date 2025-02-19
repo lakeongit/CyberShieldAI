@@ -17,6 +17,17 @@ interface UploadFile {
   error?: string;
 }
 
+interface UploadResponse {
+  id: number;
+  title: string;
+  metadata: {
+    category: string;
+    tags: string[];
+    summary: string;
+  };
+  confidence: number;
+}
+
 const ALLOWED_FILE_TYPES = ['.txt', '.md', '.pdf', '.doc', '.docx'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -27,13 +38,32 @@ export function DocumentUpload() {
   const [uploadStats, setUploadStats] = useState({ total: 0, completed: 0, failed: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadMutation = useMutation({
-    mutationFn: async (data: { title: string; content: string; fileType: string }) => {
+  const uploadMutation = useMutation<UploadResponse, Error, { title: string; content: string; fileType: string }>({
+    mutationFn: async (data) => {
       const res = await apiRequest("POST", "/api/documents", data);
-      return await res.json();
+      if (!res.ok) {
+        const errorData = await res.json();
+        if (errorData.details?.confidence) {
+          throw new Error(`Low confidence in document classification (${Math.round(errorData.details.confidence * 100)}%). Please review the content and try again.`);
+        }
+        throw new Error(errorData.error || "Failed to upload document");
+      }
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+
+      // Show detailed success message with metadata
+      toast({
+        title: "Document uploaded successfully",
+        description: (
+          <div className="space-y-2">
+            <p>Category: {data.metadata.category}</p>
+            <p>Tags: {data.metadata.tags.join(", ")}</p>
+            <p className="text-xs text-muted-foreground">{data.metadata.summary}</p>
+          </div>
+        ),
+      });
     },
   });
 
@@ -60,13 +90,11 @@ export function DocumentUpload() {
 
   const processFile = async (file: File) => {
     try {
-      // Validate file first
       const validationError = validateFile(file);
       if (validationError) {
         throw new Error(validationError);
       }
 
-      // Simulate progress updates
       const progressInterval = setInterval(() => {
         setFiles(prev =>
           prev.map(f =>
@@ -79,7 +107,7 @@ export function DocumentUpload() {
 
       const fileType = '.' + file.name.split('.').pop()?.toLowerCase();
       const content = await readFileAsText(file);
-      const title = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+      const title = file.name.replace(/\.[^/.]+$/, "");
 
       await uploadMutation.mutateAsync({ title, content, fileType });
       clearInterval(progressInterval);
@@ -117,7 +145,6 @@ export function DocumentUpload() {
         failed: prev.failed + 1
       }));
 
-      // Only show individual error toasts for single uploads
       if (files.length === 1) {
         toast({
           title: "Upload failed",
@@ -127,7 +154,6 @@ export function DocumentUpload() {
       }
     }
 
-    // Check if all uploads are complete
     if (uploadStats.completed + uploadStats.failed === uploadStats.total) {
       if (uploadStats.total > 1) {
         toast({
@@ -152,7 +178,6 @@ export function DocumentUpload() {
     setFiles(prev => [...prev, ...newFiles]);
     setUploadStats({ total: droppedFiles.length, completed: 0, failed: 0 });
 
-    // Process each file
     newFiles.forEach(async ({ file }) => {
       setFiles(prev =>
         prev.map(f =>

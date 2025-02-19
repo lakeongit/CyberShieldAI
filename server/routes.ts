@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { openai, generateEmbedding, analyzeDocument, improveQuery } from "./openai";
+import { openai, generateEmbedding, improveQuery } from "./openai";
 import { insertDocumentSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import mammoth from 'mammoth';
@@ -41,6 +41,31 @@ async function extractTextFromDocument(content: string, fileType: string): Promi
   throw new Error(`Unsupported file type: ${fileType}`);
 }
 
+async function analyzeAndClassifyDocument(content: string) {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content: `Analyze the following cybersecurity document and extract key metadata. Format your response as JSON with the following structure:
+{
+  "category": "one of: network_security, application_security, cloud_security, incident_response, compliance, threat_intelligence, or general",
+  "tags": ["array of relevant tags"],
+  "summary": "a brief 2-3 sentence summary of the document",
+  "confidence": 0.0 to 1.0
+}`
+      },
+      {
+        role: "user",
+        content
+      }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  return JSON.parse(completion.choices[0].message.content);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
@@ -59,18 +84,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate embedding and analyze document in parallel
       const [embedding, metadata] = await Promise.all([
         generateEmbedding(extractedText),
-        analyzeDocument(extractedText)
+        analyzeAndClassifyDocument(extractedText)
       ]);
+
+      // Validate confidence threshold
+      if (metadata.confidence < 0.7) {
+        return res.status(400).json({
+          error: "Document classification confidence too low",
+          details: metadata
+        });
+      }
 
       const document = await storage.createDocument({
         title,
         content: extractedText,
         embedding,
         userId: req.user.id,
-        metadata
+        metadata: {
+          category: metadata.category,
+          tags: metadata.tags,
+          summary: metadata.summary
+        }
       });
 
-      res.status(201).json(document);
+      res.status(201).json({
+        ...document,
+        confidence: metadata.confidence
+      });
     } catch (error) {
       console.error("Document creation error:", error);
       if (error instanceof ZodError) {
@@ -136,7 +176,7 @@ ${context}
 
 Format your response as JSON: {"answer": "your detailed response here"}`
           },
-          { 
+          {
             role: "user",
             content: `Original question: ${message}\nImproved question: ${improvedQuery}`
           }
@@ -147,7 +187,7 @@ Format your response as JSON: {"answer": "your detailed response here"}`
       const response = JSON.parse(completion.choices[0].message.content);
       res.json({
         response: response.answer,
-        sources: relevantDocs.map(d => ({ 
+        sources: relevantDocs.map(d => ({
           id: d.id,
           title: d.title,
           category: d.metadata?.category,
