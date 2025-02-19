@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { DocumentUpload } from "@/components/document-upload";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Document, User } from "@shared/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,8 @@ import {
   Activity,
   Search,
   Calendar,
-  BarChart2
+  BarChart2,
+  Loader2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -28,8 +29,10 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSystemMetrics } from "@/hooks/use-system-metrics";
 
 // ... existing imports remain unchanged
+
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -290,55 +293,84 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Resource Usage</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {systemMetrics?.resources.map((metric: any) => (
-                          <div key={metric.name} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{metric.name}</span>
-                              <span className="text-sm text-muted-foreground">{metric.value}</span>
-                            </div>
-                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary"
-                                style={{ width: `${metric.percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* Use the useSystemMetrics hook */}
+                {(() => {
+                  const { metrics, error, isConnected } = useSystemMetrics();
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">System Health</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {systemMetrics?.health.map((metric: any) => (
-                          <div key={metric.name} className="flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                              <Badge 
-                                variant={metric.status === 'healthy' ? 'default' : 'destructive'}
-                                className="h-2 w-2 rounded-full p-0"
-                              />
-                              {metric.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {metric.status}
-                            </span>
-                          </div>
-                        ))}
+                  if (error) {
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-destructive">{error}</p>
+                        <Button variant="outline" className="mt-4">
+                          Retry Connection
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                    );
+                  }
+
+                  if (!metrics) {
+                    return (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                        <p className="text-muted-foreground mt-2">
+                          {isConnected ? "Loading metrics..." : "Connecting to metrics service..."}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Resource Usage</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {metrics.resources.map((metric) => (
+                              <div key={metric.name} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{metric.name}</span>
+                                  <span className="text-sm text-muted-foreground">{metric.value}</span>
+                                </div>
+                                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-primary transition-all duration-500 ease-in-out"
+                                    style={{ width: `${metric.percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">System Health</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {metrics.health.map((metric) => (
+                              <div key={metric.name} className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <Badge 
+                                    variant={metric.status === 'healthy' ? 'default' : 'destructive'}
+                                    className="h-2 w-2 rounded-full p-0"
+                                  />
+                                  {metric.name}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {metric.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
